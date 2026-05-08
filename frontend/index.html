@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCP RADAR — ハザードリスク分析</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f3ee;--sf:#fff;--sf2:#eceae3;--bd:#dddad0;
+  --tx:#17171a;--mu:#787670;--ac:#bf3a2b;
+  --bl:#1b4f72;--gr:#1a7a4a;--am:#b5770c;
+  --sans:'Noto Sans JP',sans-serif;--mono:'DM Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh;}
+
+header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:flex;align-items:center;justify-content:space-between;}
+.logo{font-family:var(--mono);font-size:16px;letter-spacing:3px;}
+.logo em{color:var(--ac);font-style:normal;}
+.htag{font-family:var(--mono);font-size:10px;color:#555;letter-spacing:2px;}
+
+.hero{background:var(--tx);padding:36px 32px 48px;position:relative;overflow:hidden;}
+.hero::after{content:'RISK';position:absolute;right:-8px;bottom:-24px;font-family:var(--mono);font-size:150px;font-weight:500;color:rgba(255,255,255,0.03);pointer-events:none;line-height:1;}
+.hl{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--ac);text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.hl::before{content:'';display:block;width:20px;height:1px;background:var(--ac);}
+.hero h1{font-size:clamp(20px,4vw,38px);font-weight:900;line-height:1.1;letter-spacing:-1px;color:#f4f3ee;margin-bottom:8px;}
+.hero h1 span{color:var(--ac);}
+.hd{font-size:12px;color:#989690;max-width:500px;line-height:1.8;font-weight:300;}
+
+.sbox{max-width:800px;margin:0 auto;padding:24px 16px 0;}
+.sc{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:20px;}
+
+.mode-tabs{display:flex;border:1px solid var(--bd);border-radius:5px;overflow:hidden;width:fit-content;margin-bottom:16px;}
+.mtab{padding:7px 20px;font-size:12px;font-family:var(--mono);font-weight:500;border:none;cursor:pointer;letter-spacing:1px;transition:all .15s;background:var(--sf2);color:var(--mu);}
+.mtab.on{background:var(--tx);color:#f4f3ee;}
+
+.panel{display:none;}
+.panel.on{display:block;}
+.slbl{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--mu);text-transform:uppercase;margin-bottom:7px;display:block;}
+.srow{display:flex;gap:8px;}
+.si{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:10px 13px;font-size:14px;font-family:var(--sans);color:var(--tx);outline:none;transition:border-color .2s,box-shadow .2s;}
+.si:focus{border-color:var(--bl);box-shadow:0 0 0 3px rgba(27,79,114,.08);}
+.sbtn{background:var(--tx);color:var(--bg);border:none;border-radius:5px;padding:10px 24px;font-size:14px;font-weight:700;font-family:var(--sans);cursor:pointer;transition:background .15s;white-space:nowrap;}
+.sbtn:hover{background:var(--ac);}
+.sbtn:disabled{opacity:.4;cursor:not-allowed;}
+.exs{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px;align-items:center;}
+.exl{font-size:11px;color:var(--mu);}
+.ec{font-size:11px;color:var(--mu);background:var(--sf2);border:1px solid var(--bd);border-radius:20px;padding:2px 10px;cursor:pointer;transition:all .15s;}
+.ec:hover{color:var(--bl);border-color:var(--bl);}
+
+/* APIサーバー設定 */
+.api-config{margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:flex;align-items:center;gap:8px;}
+.api-config label{font-family:var(--mono);font-size:10px;color:var(--mu);white-space:nowrap;}
+.api-url-input{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--tx);outline:none;}
+.api-url-input:focus{border-color:var(--bl);}
+
+.main{max-width:800px;margin:0 auto;padding:20px 16px 80px;}
+
+/* Loading */
+#loadSec{display:none;}
+#loadSec.on{display:block;animation:fu .3s ease;}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.lh{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:7px;margin-bottom:14px;}
+.sp{width:16px;height:16px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lt{font-family:var(--mono);font-size:11px;color:var(--mu);letter-spacing:1px;}
+
+/* Result */
+#resSec{display:none;}
+#resSec.on{display:block;animation:fu .4s ease;}
+
+.rh{background:var(--tx);color:#f4f3ee;border-radius:8px;padding:18px 22px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;}
+.rha{font-size:16px;font-weight:900;margin-bottom:2px;}
+.rhc{font-family:var(--mono);font-size:10px;color:#666;}
+.rhi{font-family:var(--mono);font-size:10px;color:var(--ac);text-align:right;letter-spacing:1px;line-height:1.6;}
+
+.disc{background:#fefae8;border:1px solid #e0c030;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#6a5800;line-height:1.7;}
+.disc strong{color:#4a3e00;}
+
+.hcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;}
+.hc{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:14px;position:relative;overflow:hidden;transition:transform .15s;}
+.hc:hover{transform:translateY(-2px);}
+.hc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--hcol);}
+.hci{font-size:22px;display:block;margin-bottom:6px;}
+.hct{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--mu);text-transform:uppercase;margin-bottom:3px;}
+.hcl{font-family:var(--mono);font-size:18px;font-weight:500;color:var(--hcol);margin-bottom:1px;}
+.hcd{font-size:10px;color:var(--mu);line-height:1.4;}
+.hbar{height:3px;background:var(--sf2);border-radius:2px;overflow:hidden;margin-top:8px;}
+.hbf{height:100%;border-radius:2px;background:var(--hcol);width:0;transition:width 1s cubic-bezier(.4,0,.2,1);}
+.hcs{font-size:9px;color:var(--mu);margin-top:3px;font-family:var(--mono);}
+
+.tcard{background:var(--sf);border:1px solid var(--bd);border-radius:8px;margin-bottom:14px;overflow:hidden;}
+.th2{background:var(--sf2);border-bottom:1px solid var(--bd);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;}
+.tht{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--mu);text-transform:uppercase;}
+.ths{font-size:10px;color:var(--mu);}
+.dr{display:grid;grid-template-columns:150px 1fr 80px;align-items:start;padding:9px 16px;border-bottom:1px solid var(--bd);gap:10px;font-size:12px;}
+.dr:last-child{border-bottom:none;}
+.dl{font-weight:500;color:var(--tx);font-size:12px;}
+.dn{font-size:10px;color:var(--mu);margin-top:1px;}
+.dv{font-family:var(--mono);font-size:10px;color:var(--tx);line-height:1.5;}
+.drisk{font-family:var(--mono);font-size:10px;font-weight:500;text-align:right;}
+.rH{color:var(--ac);}
+.rM{color:var(--am);}
+.rL{color:var(--gr);}
+.rN{color:var(--mu);}
+
+.rf{background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:12px 16px;font-size:10px;color:var(--mu);line-height:1.8;margin-bottom:14px;}
+.ract{display:flex;gap:8px;flex-wrap:wrap;}
+.bpr{background:var(--bl);color:#fff;border:none;border-radius:5px;padding:10px 22px;font-size:12px;font-weight:700;font-family:var(--sans);cursor:pointer;}
+.bpr:hover{background:#154360;}
+.bnw{background:none;border:1px solid var(--bd);border-radius:5px;padding:10px 22px;font-size:12px;font-family:var(--sans);cursor:pointer;color:var(--mu);}
+.bnw:hover{border-color:var(--tx);color:var(--tx);}
+
+.err-box{background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:14px 16px;font-size:12px;color:#991b1b;display:none;}
+.err-box.on{display:block;}
+
+@media(max-width:580px){
+  .srow{flex-direction:column;}
+  .dr{grid-template-columns:1fr 1fr;}
+  .drisk{text-align:left;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BCP<em>RADAR</em></div>
+  <div class="htag">HAZARD RISK ANALYZER</div>
+</header>
+
+<div class="hero">
+  <div class="hl">J-SHIS × 国交省ハザードマップ × 国土地理院</div>
+  <h1>ハザード<span>リスク</span><br>分析システム</h1>
+  <p class="hd">公的データ（J-SHIS・国土交通省・国土地理院）をリアルタイムで取得し、地点ごとの地震・洪水・津波・高潮・土砂災害リスクを算定します。</p>
+</div>
+
+<div class="sbox">
+  <div class="sc">
+    <div class="mode-tabs">
+      <button class="mtab on" id="tabAddr" onclick="switchMode('addr')">住所入力</button>
+      <button class="mtab"    id="tabLL"   onclick="switchMode('ll')">緯度経度入力</button>
+    </div>
+
+    <div class="panel on" id="panelAddr">
+      <span class="slbl">📍 住所を入力</span>
+      <div class="srow">
+        <input class="si" id="addrInput" type="text" placeholder="例：東京都江東区有明3丁目">
+        <button class="sbtn" id="btnAddr" onclick="runAddr()">分析する</button>
+      </div>
+      <div class="exs">
+        <span class="exl">例：</span>
+        <span class="ec" onclick="setAddr('東京都江東区有明3丁目')">江東区有明</span>
+        <span class="ec" onclick="setAddr('高知県高知市浦戸')">高知市浦戸</span>
+        <span class="ec" onclick="setAddr('神奈川県川崎市幸区堀川町')">川崎市幸区</span>
+        <span class="ec" onclick="setAddr('大阪府大阪市此花区島屋1丁目')">大阪市此花区</span>
+        <span class="ec" onclick="setAddr('岩手県宮古市田老')">宮古市田老</span>
+      </div>
+    </div>
+
+    <div class="panel" id="panelLL">
+      <span class="slbl">📍 緯度・経度を入力（WGS84）</span>
+      <div class="srow">
+        <input class="si" id="latInput" type="text" placeholder="緯度 例：35.65502" style="max-width:180px;">
+        <input class="si" id="lonInput" type="text" placeholder="経度 例：139.74452" style="max-width:180px;">
+        <button class="sbtn" id="btnLL" onclick="runLL()">分析する</button>
+      </div>
+      <div class="exs">
+        <span class="exl">例：</span>
+        <span class="ec" onclick="setLL(35.6555,139.7454)">江東区有明</span>
+        <span class="ec" onclick="setLL(33.4934,133.5522)">高知市浦戸</span>
+        <span class="ec" onclick="setLL(39.6456,141.9683)">宮古市田老</span>
+      </div>
+      <div style="font-size:11px;color:var(--mu);margin-top:6px;">※ 日本国内（緯度20〜47°、経度122〜154°）のみ対応</div>
+    </div>
+
+    <!-- APIサーバーURL設定 -->
+    <div class="api-config">
+      <label>API SERVER:</label>
+      <input class="api-url-input" id="apiUrl" type="text" value="https://bcp-radar-api.onrender.com" placeholder="https://your-app.onrender.com">
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="err-box" id="errBox"></div>
+
+  <div id="loadSec">
+    <div class="lh">
+      <div class="sp"></div>
+      <div class="lt" id="lt">公的データを取得中...</div>
+    </div>
+  </div>
+
+  <div id="resSec">
+    <div class="rh">
+      <div><div class="rha" id="rAddr">—</div><div class="rhc" id="rCoord">—</div></div>
+      <div class="rhi" id="rId">—</div>
+    </div>
+
+    <div class="disc">
+      <strong>【免責事項】</strong>
+      本分析はJ-SHIS（防災科学技術研究所）・ハザードマップポータルサイト（国土交通省）・国土地理院の公開データを元に算定した<strong>参考情報</strong>です。
+      <strong>現地調査は実施していないため、実際の状況と算定リスクに乖離が生じる場合があります。</strong>
+      建物内部・周辺微地形・排水施設等は反映されていません。避難判断・保険契約・設備投資の唯一の根拠としてのご使用はお控えください。
+    </div>
+
+    <div class="hcards" id="hcards"></div>
+
+    <div class="tcard">
+      <div class="th2">
+        <span class="tht">取得データ詳細 — 公的データソース</span>
+        <span class="ths">出典：ハザードマップポータルサイト / J-SHIS / 国土地理院</span>
+      </div>
+      <div id="dtable"></div>
+    </div>
+
+    <div class="rf" id="rf">—</div>
+    <div class="ract">
+      <button class="bpr" onclick="window.print()">印刷 / PDF保存</button>
+      <button class="bnw" onclick="reset()">別の住所を分析</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API_BASE = document.getElementById('apiUrl').value;
+var currentMode = 'addr';
+
+function switchMode(m) {
+  currentMode = m;
+  document.getElementById('panelAddr').className = 'panel' + (m === 'addr' ? ' on' : '');
+  document.getElementById('panelLL').className   = 'panel' + (m === 'll'   ? ' on' : '');
+  document.getElementById('tabAddr').className   = 'mtab' + (m === 'addr' ? ' on' : '');
+  document.getElementById('tabLL').className     = 'mtab' + (m === 'll'   ? ' on' : '');
+}
+
+function setAddr(a) { document.getElementById('addrInput').value = a; }
+function setLL(la, lo) { document.getElementById('latInput').value = la; document.getElementById('lonInput').value = lo; }
+
+['addrInput','latInput','lonInput'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') currentMode === 'addr' ? runAddr() : runLL();
+  });
+});
+
+function getApiBase() {
+  return document.getElementById('apiUrl').value.replace(/\/$/, '');
+}
+
+function setBtns(disabled) {
+  ['btnAddr','btnLL'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+}
+
+function showErr(msg) {
+  var el = document.getElementById('errBox');
+  el.textContent = '⚠️ ' + msg;
+  el.classList.add('on');
+  document.getElementById('loadSec').classList.remove('on');
+  setBtns(false);
+}
+
+function hideErr() { document.getElementById('errBox').classList.remove('on'); }
+
+async function runAddr() {
+  var addr = document.getElementById('addrInput').value.trim();
+  if (!addr) return;
+  hideErr();
+  setBtns(true);
+  document.getElementById('loadSec').classList.add('on');
+  document.getElementById('resSec').classList.remove('on');
+  document.getElementById('lt').textContent = '住所を変換中...';
+
+  try {
+    var base = getApiBase();
+    var r = await fetch(base + '/api/full?address=' + encodeURIComponent(addr));
+    if (!r.ok) {
+      var err = await r.json();
+      throw new Error(err.detail || 'サーバーエラー');
+    }
+    var data = await r.json();
+    renderResult(data);
+  } catch(e) {
+    showErr(e.message);
+  }
+}
+
+async function runLL() {
+  var lat = parseFloat(document.getElementById('latInput').value);
+  var lon = parseFloat(document.getElementById('lonInput').value);
+  if (isNaN(lat) || isNaN(lon) || lat < 20 || lat > 47 || lon < 122 || lon > 154) {
+    showErr('緯度（20〜47）・経度（122〜154）の範囲で入力してください');
+    return;
+  }
+  hideErr();
+  setBtns(true);
+  document.getElementById('loadSec').classList.add('on');
+  document.getElementById('resSec').classList.remove('on');
+  document.getElementById('lt').textContent = '公的データを取得中...';
+
+  try {
+    var base = getApiBase();
+    var r = await fetch(base + '/api/full?lat=' + lat + '&lon=' + lon);
+    if (!r.ok) {
+      var err = await r.json();
+      throw new Error(err.detail || 'サーバーエラー');
+    }
+    var data = await r.json();
+    renderResult(data);
+  } catch(e) {
+    showErr(e.message);
+  }
+}
+
+function renderResult(d) {
+  document.getElementById('loadSec').classList.remove('on');
+  document.getElementById('resSec').classList.add('on');
+  setBtns(false);
+
+  var lat = d.coordinate.lat, lon = d.coordinate.lon;
+  document.getElementById('rAddr').textContent = d.place_name || ('緯度' + lat.toFixed(5) + ', 経度' + lon.toFixed(5));
+  document.getElementById('rCoord').textContent =
+    '緯度 ' + lat.toFixed(5) + ' / 経度 ' + lon.toFixed(5) +
+    (d.elevation != null ? ' / 標高 ' + d.elevation.toFixed(1) + 'm' : '');
+  var rid = 'RPT-' + Date.now().toString(36).toUpperCase();
+  document.getElementById('rId').textContent = rid + '\n' + new Date().toLocaleDateString('ja-JP') + ' 生成';
+
+  renderCards(d.scores, d.hazard_tiles);
+  renderTable(d);
+
+  document.getElementById('rf').innerHTML =
+    'データソース：J-SHIS（防災科学技術研究所）/ ハザードマップポータルサイト（国土交通省）/ 国土地理院<br>' +
+    '分析ID：' + rid + ' / 生成：' + new Date().toLocaleString('ja-JP') + '<br>' +
+    '出典：ハザードマップポータルサイト https://disaportal.gsi.go.jp/<br>' +
+    '※本分析は参考情報です。必ず公式ハザードマップ・専門家への相談を併用してください。';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderCards(scores, tiles) {
+  var cmap = { '高': '#bf3a2b', '中': '#b5770c', '低': '#1a7a4a', '不明': '#787670' };
+  var cards = [
+    { icon: '🏚️', type: '地震',        key: 'earthquake', detail: 'J-SHIS 2024年版' },
+    { icon: '🌊', type: '洪水（最大）', key: 'flood',      detail: tiles.flood      ? tiles.flood.label      : '—' },
+    { icon: '🏙️', type: '内水浸水',    key: 'naisui',     detail: tiles.naisui     ? tiles.naisui.label     : '—' },
+    { icon: '🌊', type: '高潮',         key: 'hightide',   detail: tiles.hightide   ? tiles.hightide.label   : '—' },
+    { icon: '🌀', type: '津波',         key: 'tsunami',    detail: tiles.tsunami    ? tiles.tsunami.label    : '—' },
+    { icon: '⛰️', type: '土砂災害',    key: 'landslide',  detail: '警戒区域タイル解析' },
+  ];
+  document.getElementById('hcards').innerHTML = cards.map(function(c) {
+    var s = scores[c.key] || { score: 0, level: '不明' };
+    var col = cmap[s.level] || '#787670';
+    return '<div class="hc" style="--hcol:' + col + '">' +
+      '<div class="hci">' + c.icon + '</div>' +
+      '<div class="hct">' + c.type + '</div>' +
+      '<div class="hcl">' + s.level + '</div>' +
+      '<div class="hcd">' + c.detail + '</div>' +
+      '<div class="hbar"><div class="hbf" data-w="' + s.score + '"></div></div>' +
+      '<div class="hcs">スコア ' + s.score + '/100</div>' +
+    '</div>';
+  }).join('');
+  setTimeout(function() {
+    document.querySelectorAll('.hbf').forEach(function(el) { el.style.width = el.dataset.w + '%'; });
+  }, 100);
+}
+
+function renderTable(d) {
+  var j = d.jshis || {};
+  var p = j.pshm || {};
+  var s = j.sstrct || {};
+  var ls = j.landslide || {};
+  var t = d.hazard_tiles || {};
+  var elev = d.elevation;
+
+  function f(v) { return v || '取得不可'; }
+  function riskClass(r) { return r === '高' ? 'rH' : r === '中' ? 'rM' : r === '低' ? 'rL' : 'rN'; }
+  function riskLabel(r) { return r === '高' ? '高リスク' : r === '中' ? '中リスク' : r === '低' ? '低リスク' : '—'; }
+
+  var elevRisk = elev != null ? (elev < 2 ? '高' : elev < 10 ? '中' : '低') : null;
+  var i60Risk  = p.i60 ? (parseFloat(p.i60) >= 26 ? '高' : parseFloat(p.i60) >= 6 ? '中' : '低') : null;
+  var vs30Risk = s.vs30 ? (parseInt(s.vs30) < 150 ? '高' : parseInt(s.vs30) < 300 ? '中' : '低') : null;
+
+  var rows = [
+    { label: '標高',              src: '国土地理院 / 標高API',               val: elev != null ? elev.toFixed(1) + ' m' : '取得不可',  note: '浸水・津波リスク評価に使用',          risk: elevRisk },
+    { label: '30年/震度6弱以上',  src: 'J-SHIS 2024 / 地震ハザード',         val: f(p.i60),   note: '震度6強以上: ' + f(p.i55) + ' / 震度5弱以上: ' + f(p.i45), risk: i60Risk },
+    { label: '地盤Vs30',          src: 'J-SHIS V4 / 表層地盤',               val: f(s.vs30),  note: '増幅率ARV: ' + f(s.arv) + ' / 微地形: ' + f(s.micro_topo), risk: vs30Risk },
+    { label: '地すべり地形',      src: 'J-SHIS / 地すべり地形API',           val: ls.is_landslide ? '含まれる' : (ls.is_landslide === false ? '含まれない' : '取得不可'), note: '250mメッシュ交差判定', risk: ls.is_landslide ? '中' : '低' },
+    { label: '洪水浸水深',        src: '国交省 / 洪水浸水想定（最大規模）',  val: f(t.flood    && t.flood.label),    note: t.flood    && t.flood.depth    ? '想定: 約' + t.flood.depth + 'm'    : 'タイル色解析', risk: t.flood    && t.flood.risk    },
+    { label: '内水浸水深',        src: '国交省 / 内水（雨水出水）浸水想定',  val: f(t.naisui   && t.naisui.label),   note: t.naisui   && t.naisui.depth   ? '想定: 約' + t.naisui.depth + 'm'   : 'タイル色解析', risk: t.naisui   && t.naisui.risk   },
+    { label: '高潮浸水深',        src: '国交省 / 高潮浸水想定（最大規模）',  val: f(t.hightide && t.hightide.label), note: t.hightide && t.hightide.depth ? '想定: 約' + t.hightide.depth + 'm' : 'タイル色解析', risk: t.hightide && t.hightide.risk },
+    { label: '津波浸水深',        src: '国交省 / 津波浸水想定',              val: f(t.tsunami  && t.tsunami.label),  note: t.tsunami  && t.tsunami.depth  ? '想定: 約' + t.tsunami.depth + 'm'  : 'タイル色解析', risk: t.tsunami  && t.tsunami.risk  },
+    { label: '土石流警戒区域',    src: '国交省 / 土石流警戒区域',            val: f(t.doseki   && t.doseki.label),   note: 'WMTSタイル色解析',  risk: t.doseki   && t.doseki.risk   },
+    { label: '急傾斜地崩壊',      src: '国交省 / 急傾斜地崩壊警戒区域',     val: f(t.kyukei   && t.kyukei.label),   note: 'WMTSタイル色解析',  risk: t.kyukei   && t.kyukei.risk   },
+    { label: '地すべり（警戒）',  src: '国交省 / 地すべり警戒区域',         val: f(t.jisuberi && t.jisuberi.label), note: 'WMTSタイル色解析',  risk: t.jisuberi && t.jisuberi.risk },
+  ];
+
+  document.getElementById('dtable').innerHTML = rows.map(function(row) {
+    var rc = riskClass(row.risk);
+    return '<div class="dr">' +
+      '<div><div class="dl">' + row.label + '</div><div class="dn">' + row.src + '</div></div>' +
+      '<div><div class="dv">' + row.val + '</div><div class="dn">' + row.note + '</div></div>' +
+      '<div class="drisk ' + rc + '">' + riskLabel(row.risk) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function reset() {
+  document.getElementById('resSec').classList.remove('on');
+  document.getElementById('addrInput').value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
