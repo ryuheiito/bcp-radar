@@ -26,7 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-TIMEOUT = httpx.Timeout(15.0)
+TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
 
 # ──────────────────────────────────────
@@ -160,7 +160,7 @@ async def fetch_jshis_pshm(lat: float, lon: float, client: httpx.AsyncClient) ->
             "sv6": f"{p['T30_P06_SV']:.0f} cm/s" if p.get("T30_P06_SV") is not None else None,
         }
     except Exception as e:
-        logger.warning(f"J-SHIS pshm取得失敗: {e}")
+        logger.warning(f"J-SHIS pshm取得失敗: {type(e).__name__}: {e}")
         return None
 
 
@@ -178,7 +178,7 @@ async def fetch_jshis_sstrct(lat: float, lon: float, client: httpx.AsyncClient) 
             "micro_topo": p.get("JNAME"),
         }
     except Exception as e:
-        logger.warning(f"J-SHIS sstrct取得失敗: {e}")
+        logger.warning(f"J-SHIS sstrct取得失敗: {type(e).__name__}: {e}")
         return None
 
 
