@@ -243,6 +243,57 @@ async def health():
     return {"status": "ok"}
 
 
+
+@app.get("/api/debug")
+async def debug(lat: float = 35.6555, lon: float = 139.7454):
+    """J-SHISへの接続を詳細デバッグ"""
+    results = {}
+    
+    # SSL検証あり
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+            url = f"https://www.j-shis.bosai.go.jp/map/api/pshm/Y2024/AVR/TTL_MTTL/meshinfo.geojson?position={lon},{lat}&epsg=4326"
+            r = await client.get(url)
+            d = r.json()
+            results["pshm_ssl_on"] = {
+                "status": d.get("status"),
+                "http_status": r.status_code,
+                "error": d.get("error"),
+                "has_data": bool(d.get("features") and d["features"][0].get("properties"))
+            }
+    except Exception as e:
+        results["pshm_ssl_on"] = {"error": f"{type(e).__name__}: {e}"}
+
+    # SSL検証オフ
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0), verify=False) as client:
+            url = f"https://www.j-shis.bosai.go.jp/map/api/pshm/Y2024/AVR/TTL_MTTL/meshinfo.geojson?position={lon},{lat}&epsg=4326"
+            r = await client.get(url)
+            d = r.json()
+            results["pshm_ssl_off"] = {
+                "status": d.get("status"),
+                "http_status": r.status_code,
+                "has_data": bool(d.get("features") and d["features"][0].get("properties"))
+            }
+    except Exception as e:
+        results["pshm_ssl_off"] = {"error": f"{type(e).__name__}: {e}"}
+
+    # タイル取得テスト
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0), verify=False) as client:
+            url = "https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/17/116415/51624.png"
+            r = await client.get(url)
+            results["tsunami_tile"] = {
+                "http_status": r.status_code,
+                "content_type": r.headers.get("content-type"),
+                "size": len(r.content)
+            }
+    except Exception as e:
+        results["tsunami_tile"] = {"error": f"{type(e).__name__}: {e}"}
+
+    return results
+
+
 @app.get("/api/geocode")
 async def geocode(address: str = Query(..., description="住所")):
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
@@ -263,7 +314,7 @@ async def analyze(
     if not (20.0 <= lat <= 47.0 and 122.0 <= lon <= 154.0):
         raise HTTPException(status_code=400, detail="日本国内の座標を指定してください（緯度20〜47、経度122〜154）")
 
-    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, verify=False) as client:
 
         # 並列取得（標高・J-SHIS 3種）
         elev_task     = fetch_elevation(lat, lon, client)
@@ -365,7 +416,7 @@ async def full_analysis(
     lon: float = Query(None),
 ):
     """住所 or 緯度経度を受け取り、ジオコーディング → 全分析を一括実行"""
-    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT, verify=False) as client:
         if address:
             try:
                 geo = await fetch_geocode(address, client)
