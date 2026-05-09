@@ -21,7 +21,7 @@ header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:fle
 .hd{font-size:12px;color:#989690;max-width:500px;line-height:1.8;font-weight:300;}
 .hbadges{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
 .hbadge{font-family:var(--mono);font-size:10px;padding:3px 10px;border:1px solid rgba(255,255,255,0.12);border-radius:2px;color:#7a7870;}
-.sbox{max-width:820px;margin:0 auto;padding:24px 16px 0;}
+.sbox{max-width:800px;margin:0 auto;padding:24px 16px 0;}
 .sc{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:20px;}
 .mode-tabs{display:flex;border:1px solid var(--bd);border-radius:5px;overflow:hidden;width:fit-content;margin-bottom:16px;}
 .mtab{padding:7px 20px;font-size:12px;font-family:var(--mono);font-weight:500;border:none;cursor:pointer;letter-spacing:1px;transition:all .15s;background:var(--sf2);color:var(--mu);}
@@ -41,7 +41,7 @@ header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:fle
 .api-cfg label{font-family:var(--mono);font-size:10px;color:var(--mu);white-space:nowrap;}
 .api-cfg input{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:6px 10px;font-size:12px;font-family:var(--mono);color:var(--tx);outline:none;}
 .api-cfg input:focus{border-color:var(--bl);}
-.main{max-width:820px;margin:0 auto;padding:20px 16px 80px;}
+.main{max-width:800px;margin:0 auto;padding:20px 16px 80px;}
 #loadSec{display:none;}#loadSec.on{display:block;animation:fu .3s ease;}
 @keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .lh{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--sf);border:1px solid var(--bd);border-radius:7px;margin-bottom:14px;}
@@ -55,7 +55,6 @@ header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:fle
 .rhi{font-family:var(--mono);font-size:10px;color:var(--ac);text-align:right;letter-spacing:1px;line-height:1.6;}
 .disc{background:#fefae8;border:1px solid #e0c030;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#6a5800;line-height:1.7;}
 .disc strong{color:#4a3e00;}
-/* スコアカード */
 .hcards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
 @media(max-width:560px){.hcards{grid-template-columns:1fr 1fr;}}
 .hc{background:var(--sf);border:1px solid var(--bd);border-radius:8px;padding:16px;position:relative;overflow:hidden;transition:transform .15s;}
@@ -68,12 +67,11 @@ header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:fle
 .hbar{height:3px;background:var(--sf2);border-radius:2px;overflow:hidden;margin-top:10px;}
 .hbf{height:100%;border-radius:2px;background:var(--hcol);width:0;transition:width 1s cubic-bezier(.4,0,.2,1);}
 .hcs{font-size:9px;color:var(--mu);margin-top:4px;font-family:var(--mono);}
-/* データテーブル */
 .tcard{background:var(--sf);border:1px solid var(--bd);border-radius:8px;margin-bottom:14px;overflow:hidden;}
 .th2{background:var(--sf2);border-bottom:1px solid var(--bd);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
 .tht{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--mu);text-transform:uppercase;}
 .ths{font-size:10px;color:var(--mu);}
-.dr{display:grid;grid-template-columns:160px 1fr 80px;align-items:start;padding:9px 16px;border-bottom:1px solid var(--bd);gap:10px;font-size:12px;}
+.dr{display:grid;grid-template-columns:150px 1fr 80px;align-items:start;padding:9px 16px;border-bottom:1px solid var(--bd);gap:10px;font-size:12px;}
 .dr:last-child{border-bottom:none;}
 @media(max-width:560px){.dr{grid-template-columns:1fr 1fr;}.drisk{text-align:left;}}
 .dl{font-weight:500;color:var(--tx);}
@@ -81,16 +79,6 @@ header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:fle
 .dv{font-family:var(--mono);font-size:11px;color:var(--tx);line-height:1.5;}
 .drisk{font-family:var(--mono);font-size:10px;font-weight:500;text-align:right;}
 .rH{color:var(--ac);}.rM{color:var(--am);}.rL{color:var(--gr);}.rN{color:var(--mu);}
-/* 地震リスト */
-.qlist{padding:0;}
-.qrow{display:grid;grid-template-columns:130px 50px 1fr 60px;align-items:center;padding:8px 16px;border-bottom:1px solid var(--bd);font-size:11px;gap:8px;}
-.qrow:last-child{border-bottom:none;}
-.qtime{font-family:var(--mono);font-size:10px;color:var(--mu);}
-.qmag{font-family:var(--mono);font-weight:500;color:var(--tx);}
-.qarea{color:var(--tx);}
-.qint{font-family:var(--mono);font-size:10px;color:var(--mu);text-align:right;}
-.qempty{padding:14px 16px;font-size:12px;color:var(--mu);}
-/* フッター */
 .rf{background:var(--sf2);border:1px solid var(--bd);border-radius:6px;padding:12px 16px;font-size:10px;color:var(--mu);line-height:1.8;margin-bottom:14px;}
 .ract{display:flex;gap:8px;flex-wrap:wrap;}
 .bpr{background:var(--bl);color:#fff;border:none;border-radius:5px;padding:10px 22px;font-size:12px;font-weight:700;font-family:var(--sans);cursor:pointer;}
@@ -104,17 +92,16 @@ header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:fle
 <body>
 <header>
   <div class="logo">BCP<em>RADAR</em></div>
-  <div class="htag">HAZARD RISK ANALYZER v5</div>
+  <div class="htag">HAZARD RISK ANALYZER</div>
 </header>
 <div class="hero">
-  <div class="hl">J-SHIS x 浸水ナビ x 国土地理院 x 気象庁</div>
+  <div class="hl">J-SHIS x 浸水ナビ x 国土地理院</div>
   <h1>ハザード<span>リスク</span><br>分析システム</h1>
   <p class="hd">住所または緯度経度を入力するだけで、公的データをリアルタイムに取得し、地震・洪水・土砂災害リスクを算定します。</p>
   <div class="hbadges">
     <div class="hbadge">J-SHIS 2024 地震ハザード</div>
     <div class="hbadge">浸水ナビ 洪水浸水深</div>
-    <div class="hbadge">国土数値情報 土地利用</div>
-    <div class="hbadge">気象庁 地震履歴</div>
+    <div class="hbadge">国土地理院 標高・地盤</div>
   </div>
 </div>
 <div class="sbox">
@@ -171,42 +158,17 @@ header{background:var(--tx);color:#f4f3ee;padding:0 32px;height:50px;display:fle
     </div>
     <div class="disc">
       <strong>【免責事項】</strong>
-      本分析はJ-SHIS（防災科学技術研究所）・浸水ナビ・国土地理院・気象庁の公開データを元に算定した<strong>参考情報</strong>です。
+      本分析はJ-SHIS（防災科学技術研究所）・浸水ナビ（国土地理院）の公開データを元に算定した<strong>参考情報</strong>です。
       <strong>現地調査は実施していないため、実際の状況と算定リスクに乖離が生じる場合があります。</strong>
       避難判断・保険契約・設備投資の唯一の根拠としてのご使用はお控えください。
     </div>
     <div class="hcards" id="hcards"></div>
-    <!-- 地点情報 -->
     <div class="tcard">
       <div class="th2">
-        <span class="tht">地点情報 — 地形・土地利用</span>
-        <span class="ths">国土地理院 / 国土数値情報</span>
+        <span class="tht">取得データ詳細 — 公的データソース</span>
+        <span class="ths">出典：J-SHIS / 浸水ナビ / 国土地理院</span>
       </div>
-      <div id="siteTable"></div>
-    </div>
-    <!-- ハザードデータ -->
-    <div class="tcard">
-      <div class="th2">
-        <span class="tht">ハザードデータ詳細</span>
-        <span class="ths">J-SHIS / 浸水ナビ（国土地理院）</span>
-      </div>
-      <div id="hazardTable"></div>
-    </div>
-    <!-- 地震追加指標 -->
-    <div class="tcard">
-      <div class="th2">
-        <span class="tht">地震動詳細指標</span>
-        <span class="ths">J-SHIS 2024年版（全地震・平均ケース）</span>
-      </div>
-      <div id="seismicTable"></div>
-    </div>
-    <!-- 最近の地震 -->
-    <div class="tcard">
-      <div class="th2">
-        <span class="tht">最近の地震（M3以上・最新10件）</span>
-        <span class="ths">気象庁</span>
-      </div>
-      <div class="qlist" id="quakeList"></div>
+      <div id="dtable"></div>
     </div>
     <div class="rf" id="rf">-</div>
     <div class="ract">
@@ -269,19 +231,15 @@ function renderResult(d){
   setBtns(false);
   var lat=d.coordinate.lat,lon=d.coordinate.lon;
   document.getElementById('rAddr').textContent=d.place_name||('緯度'+lat.toFixed(5)+', 経度'+lon.toFixed(5));
-  document.getElementById('rCoord').textContent=
-    '緯度 '+lat.toFixed(5)+' / 経度 '+lon.toFixed(5)+
-    (d.elevation!=null?' / 標高 '+d.elevation.toFixed(1)+'m ('+(d.elevation_src||'')+'）':'');
+  document.getElementById('rCoord').textContent='緯度 '+lat.toFixed(5)+' / 経度 '+lon.toFixed(5)+(d.elevation!=null?' / 標高 '+d.elevation.toFixed(1)+'m':'');
   var rid='RPT-'+Date.now().toString(36).toUpperCase();
   document.getElementById('rId').textContent=rid+'\n'+new Date().toLocaleDateString('ja-JP')+' 生成';
   renderCards(d);
-  renderSiteTable(d);
-  renderHazardTable(d);
-  renderSeismicTable(d);
-  renderQuakes(d.recent_quakes||[]);
+  renderTable(d);
   document.getElementById('rf').innerHTML=
-    'データソース：J-SHIS（防災科学技術研究所）/ 浸水ナビ・国土地理院 / 国土数値情報（国土交通省）/ 気象庁<br>'+
+    'データソース：J-SHIS（防災科学技術研究所）/ 浸水ナビ（国土地理院）/ 国土地理院<br>'+
     '分析ID：'+rid+' / 生成：'+new Date().toLocaleString('ja-JP')+'<br>'+
+    '出典：浸水ナビ https://suiboumap.gsi.go.jp/ / J-SHIS https://www.j-shis.bosai.go.jp/<br>'+
     '※本分析は参考情報です。必ず公式ハザードマップ・専門家への相談を併用してください。';
   window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -311,19 +269,40 @@ function renderCards(d){
   setTimeout(function(){document.querySelectorAll('.hbf').forEach(function(el){el.style.width=el.dataset.w+'%';});},100);
 }
 
-function row(label,src,val,note,risk){
+function renderTable(d){
+  var p=(d.jshis&&d.jshis.pshm)||{};
+  var s=(d.jshis&&d.jshis.sstrct)||{};
+  var ls=(d.jshis&&d.jshis.landslide)||{};
+  var fl=d.flood||{};
+  var elev=d.elevation;
+  function f(v){return v!=null?String(v):'取得不可';}
   function rc(r){return r==='高'?'rH':r==='中'?'rM':r==='低'?'rL':'rN';}
   function rl(r){return r==='高'?'高リスク':r==='中'?'中リスク':r==='低'?'低リスク':'—';}
-  return '<div class="dr">'+
-    '<div><div class="dl">'+label+'</div><div class="dn">'+src+'</div></div>'+
-    '<div><div class="dv">'+val+'</div>'+(note?'<div class="dn">'+note+'</div>':'')+'</div>'+
-    '<div class="drisk '+rc(risk)+'">'+rl(risk)+'</div>'+
-  '</div>';
+  var elevRisk=elev!=null?(elev<2?'高':elev<10?'中':'低'):null;
+  var i60Risk=p.i60?(parseFloat(p.i60)>=26?'高':parseFloat(p.i60)>=6?'中':'低'):null;
+  var vs30Risk=s.vs30?(parseInt(s.vs30)<150?'高':parseInt(s.vs30)<300?'中':'低'):null;
+  var flRisk=fl.in_zone?(fl.depth>=3?'高':fl.depth>=0.5?'中':'低'):'低';
+  var rows=[
+    {label:'標高',src:'国土地理院 / 標高API',val:elev!=null?elev.toFixed(1)+' m':'取得不可',note:'浸水・リスク評価に使用',risk:elevRisk},
+    {label:'30年/震度6弱以上確率',src:'J-SHIS 2024 / 地震ハザード',val:f(p.i60),note:'震度5弱以上: '+f(p.i45)+' / 震度6強以上: '+f(p.i55)+' / 計測震度3%超過: '+f(p.si3),risk:i60Risk},
+    {label:'地盤 Vs30',src:'J-SHIS V4 / 表層地盤',val:f(s.vs30),note:'増幅率 ARV: '+f(s.arv)+' / 微地形区分: '+f(s.micro_topo),risk:vs30Risk},
+    {label:'地すべり地形',src:'J-SHIS / 地すべり地形API',val:ls.is_landslide!=null?(ls.is_landslide?'含まれる':'含まれない'):'取得不可',note:'250mメッシュ交差判定',risk:ls.is_landslide?'中':'低'},
+    {label:'洪水最大浸水深',src:'浸水ナビ（国土地理院）',val:fl.in_zone?(fl.depth!=null?fl.depth.toFixed(2)+' m':'区域内'):'浸水想定区域外',note:fl.river?'想定河川: '+fl.river:'浸水ナビ API',risk:fl.in_zone?flRisk:'低'},
+  ];
+  document.getElementById('dtable').innerHTML=rows.map(function(row){
+    return '<div class="dr">'+
+      '<div><div class="dl">'+row.label+'</div><div class="dn">'+row.src+'</div></div>'+
+      '<div><div class="dv">'+row.val+'</div><div class="dn">'+row.note+'</div></div>'+
+      '<div class="drisk '+rc(row.risk)+'">'+rl(row.risk)+'</div>'+
+    '</div>';
+  }).join('');
 }
-function f(v){return v!=null?String(v):'取得不可';}
 
-function renderSiteTable(d){
-  var s=(d.jshis&&d.jshis.sstrct)||{};
-  var lu=d.land_use||{};
-  var elev=d.elevation;
-  var elevRisk=elev!=null?(elev<2?'高':elev<10?'中':'低'
+function doReset(){
+  document.getElementById('resSec').classList.remove('on');
+  document.getElementById('addrInput').value='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+</script>
+</body>
+</ht
