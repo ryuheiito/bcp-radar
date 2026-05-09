@@ -8,7 +8,7 @@ import httpx, asyncio, logging, traceback
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="BCP RADAR API", version="4.1.0")
+app = FastAPI(title="BCP RADAR API", version="4.2.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 
 import ssl
@@ -110,7 +110,7 @@ async def fetch_jshis_landslide(lat, lon) -> dict | None:
 async def fetch_flood_depth(lat, lon) -> dict | None:
     try:
         async with new_client() as c:
-            r = await c.get(f"https://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMaxDepthFromLatlon?lon={lon}&lat={lat}")
+            r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMaxDepthFromLatlon?lon={lon}&lat={lat}")
         ct = r.headers.get("content-type", "")
         if "html" in ct:
             logger.warning(f"浸水ナビ: HTMLが返却 (status={r.status_code})")
@@ -128,7 +128,7 @@ async def fetch_flood_depth(lat, lon) -> dict | None:
 async def fetch_flood_start_time(lat, lon) -> dict | None:
     try:
         async with new_client() as c:
-            r = await c.get(f"https://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMinStartTime?lon={lon}&lat={lat}")
+            r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMinStartTime?lon={lon}&lat={lat}")
         ct = r.headers.get("content-type", "")
         if "html" in ct:
             return None
@@ -274,7 +274,7 @@ async def debug(lat: float = 35.731, lon: float = 139.795):
     async def flood_raw():
         try:
             async with new_client() as c:
-                r = await c.get(f"https://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMaxDepthFromLatlon?lon={lon}&lat={lat}")
+                r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMaxDepthFromLatlon?lon={lon}&lat={lat}")
             return {
                 "status_code": r.status_code,
                 "content_type": r.headers.get("content-type"),
