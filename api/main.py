@@ -8,17 +8,28 @@ import httpx, asyncio, logging, traceback
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="BCP RADAR API", version="4.0.0")
+app = FastAPI(title="BCP RADAR API", version="4.1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
+
+import ssl
 
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; BCP-RADAR/4.0; +https://github.com)"}
 TIMEOUT  = httpx.Timeout(30.0, connect=10.0)
 
 
+def _ssl_ctx() -> ssl.SSLContext:
+    """Legacy Renegotiation を許可するSSLコンテキスト（古いサーバー対応）"""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    ctx.options |= 0x4  # SSL_OP_LEGACY_SERVER_CONNECT
+    return ctx
+
+
 def new_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
         timeout=TIMEOUT,
-        verify=False,
+        verify=_ssl_ctx(),
         headers=HEADERS,
         follow_redirects=True,
     )
@@ -184,7 +195,7 @@ def score_landslide(landslide, elev) -> dict:
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "4.0.0"}
+    return {"status": "ok", "version": "4.1.0"}
 
 
 @app.get("/api/geocode")
