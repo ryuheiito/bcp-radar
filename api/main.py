@@ -8,7 +8,7 @@ import httpx, asyncio, logging, traceback
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="BCP RADAR API", version="4.2.0")
+app = FastAPI(title="BCP RADAR API", version="4.3.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 
 import ssl
@@ -128,7 +128,7 @@ async def fetch_flood_depth(lat, lon) -> dict | None:
 async def fetch_flood_start_time(lat, lon) -> dict | None:
     try:
         async with new_client() as c:
-            r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMinStartTime?lon={lon}&lat={lat}")
+            r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetFloodStartTime?lon={lon}&lat={lat}")
         ct = r.headers.get("content-type", "")
         if "html" in ct:
             return None
