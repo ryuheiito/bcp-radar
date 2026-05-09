@@ -1,24 +1,23 @@
 """
-BCP RADAR — ハザードリスク分析 API サーバー v4
+BCP RADAR — ハザードリスク分析 API v5
+追加: 土地利用タイル・気象庁地震履歴・J-SHIS追加指標
 """
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-import httpx, asyncio, logging, traceback
+import httpx, asyncio, logging, ssl, math, io
+from PIL import Image
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="BCP RADAR API", version="4.4.0")
+app = FastAPI(title="BCP RADAR API", version="5.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 
-import ssl
-
-HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; BCP-RADAR/4.0; +https://github.com)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; BCP-RADAR/5.0)"}
 TIMEOUT  = httpx.Timeout(30.0, connect=10.0)
 
 
-def _ssl_ctx() -> ssl.SSLContext:
-    """Legacy Renegotiation を許可するSSLコンテキスト（古いサーバー対応）"""
+def _ssl_ctx():
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -26,16 +25,54 @@ def _ssl_ctx() -> ssl.SSLContext:
     return ctx
 
 
-def new_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        timeout=TIMEOUT,
-        verify=_ssl_ctx(),
-        headers=HEADERS,
-        follow_redirects=True,
-    )
+def new_client():
+    return httpx.AsyncClient(timeout=TIMEOUT, verify=_ssl_ctx(), headers=HEADERS, follow_redirects=True)
 
 
-# ─── 取得関数 ──────────────────────────────────
+# ─── タイル座標計算 ───────────────────────────
+
+def tile_pos(lat, lon, z):
+    pow2 = 2 ** z
+    wx = (lon + 180) / 360 * pow2
+    sin_lat = math.sin(math.radians(lat))
+    wy = (0.5 - math.log((1 + sin_lat) / (1 - sin_lat)) / (4 * math.pi)) * pow2
+    x, y = int(wx), int(wy)
+    px, py = int((wx - x) * 256), int((wy - y) * 256)
+    return x, y, px, py
+
+
+# ─── 土地利用凡例 ────────────────────────────
+
+LAND_USE_MAP = {
+    (129, 107, 121): "建物用地",
+    (184, 237, 169): "田",
+    (137, 196, 104): "その他農用地",
+    (106, 163,  78): "森林",
+    (195, 195, 195): "荒地",
+    (255, 255, 153): "ゴルフ場",
+    ( 86, 170, 213): "湖沼",
+    ( 74, 119, 198): "河川地",
+    (255, 255, 255): "海浜",
+    ( 74,  74, 198): "海水域",
+    (255, 165,   0): "道路",
+    (192,  77, 255): "鉄道",
+    (255, 100, 100): "その他用地",
+}
+
+def land_use_label(r, g, b, a):
+    if a < 10:
+        return None
+    min_dist = float('inf')
+    label = "市街地・その他"
+    for (cr, cg, cb), name in LAND_USE_MAP.items():
+        dist = (r-cr)**2 + (g-cg)**2 + (b-cb)**2
+        if dist < min_dist:
+            min_dist = dist
+            label = name
+    return label if min_dist < 3000 else "市街地・その他"
+
+
+# ─── API取得関数 ──────────────────────────────
 
 async def fetch_geocode(address: str) -> dict:
     async with new_client() as c:
@@ -51,10 +88,11 @@ async def fetch_elevation(lat, lon) -> float | None:
     try:
         async with new_client() as c:
             r = await c.get(f"https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon={lon}&lat={lat}&outtype=JSON")
-        return r.json().get("elevation")
+        d = r.json()
+        return d.get("elevation"), d.get("hsrc")  # 標高 + データソース
     except Exception as e:
         logger.warning(f"標高失敗: {e}")
-        return None
+        return None, None
 
 
 async def fetch_jshis_pshm(lat, lon) -> dict | None:
@@ -63,15 +101,20 @@ async def fetch_jshis_pshm(lat, lon) -> dict | None:
             r = await c.get(f"https://www.j-shis.bosai.go.jp/map/api/pshm/Y2024/AVR/TTL_MTTL/meshinfo.geojson?position={lon},{lat}&epsg=4326")
         d = r.json()
         if d.get("status") != "Success" or not d.get("features"):
-            logger.warning(f"pshm失敗: {d.get('status')} / {d.get('error')}")
             return None
         p = d["features"][0]["properties"]
         def pct(k): v = p.get(k); return f"{float(v)*100:.1f}%" if v is not None else None
-        def fval(k): v = p.get(k); return f"{float(v):.1f}" if v is not None else None
-        return {"i45": pct("T30_I45_PS"), "i50": pct("T30_I50_PS"),
-                "i55": pct("T30_I55_PS"), "i60": pct("T30_I60_PS"), "si3": fval("T30_P03_SI")}
+        def fv(k):  v = p.get(k); return f"{float(v):.1f}"      if v is not None else None
+        return {
+            "i45": pct("T30_I45_PS"), "i50": pct("T30_I50_PS"),
+            "i55": pct("T30_I55_PS"), "i60": pct("T30_I60_PS"),
+            "si3": fv("T30_P03_SI"),  "si6": fv("T30_P06_SI"),
+            "sv3": fv("T30_P03_SV"),  "sv6": fv("T30_P06_SV"),
+            # 50年超過確率
+            "i50y_02": pct("T50_P02_SI"), "sv50y": fv("T50_P02_SV"),
+        }
     except Exception as e:
-        logger.warning(f"pshm例外: {type(e).__name__}: {e}")
+        logger.warning(f"pshm失敗: {type(e).__name__}: {e}")
         return None
 
 
@@ -87,9 +130,10 @@ async def fetch_jshis_sstrct(lat, lon) -> dict | None:
             "vs30":       f"{round(float(p['AVS']))} m/s" if p.get("AVS") is not None else None,
             "arv":        f"{float(p['ARV']):.2f}"         if p.get("ARV") is not None else None,
             "micro_topo": p.get("JNAME"),
+            "jcode":      p.get("JCODE"),
         }
     except Exception as e:
-        logger.warning(f"sstrct例外: {type(e).__name__}: {e}")
+        logger.warning(f"sstrct失敗: {type(e).__name__}: {e}")
         return None
 
 
@@ -103,7 +147,7 @@ async def fetch_jshis_landslide(lat, lon) -> dict | None:
         raw = d.get("isContaining", 0)
         return {"is_landslide": raw not in (0, "0", False, None)}
     except Exception as e:
-        logger.warning(f"landslide例外: {type(e).__name__}: {e}")
+        logger.warning(f"landslide失敗: {type(e).__name__}: {e}")
         return None
 
 
@@ -113,7 +157,6 @@ async def fetch_flood_depth(lat, lon) -> dict | None:
             r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMaxDepthFromLatlon?lon={lon}&lat={lat}")
         ct = r.headers.get("content-type", "")
         if "html" in ct:
-            logger.warning(f"浸水ナビ: HTMLが返却 (status={r.status_code})")
             return None
         data = r.json()
         if not data:
@@ -121,28 +164,57 @@ async def fetch_flood_depth(lat, lon) -> dict | None:
         entry = data[0] if isinstance(data, list) else data
         return {"depth": float(entry.get("Depth", 0)), "river": entry.get("EntryRiverName"), "in_zone": True}
     except Exception as e:
-        logger.warning(f"浸水ナビ例外: {type(e).__name__}: {e}")
+        logger.warning(f"浸水ナビ失敗: {type(e).__name__}: {e}")
         return None
 
 
-async def fetch_flood_start_time(lat, lon) -> dict | None:
+async def fetch_land_use(lat, lon) -> dict | None:
+    """国土数値情報 200m土地利用メッシュ（タイル解析）"""
+    try:
+        z = 14
+        x, y, px, py = tile_pos(lat, lon, z)
+        async with new_client() as c:
+            r = await c.get(f"https://cyberjapandata.gsi.go.jp/xyz/lum200k/{z}/{x}/{y}.png")
+        if r.status_code != 200:
+            return None
+        img = Image.open(io.BytesIO(r.content)).convert("RGBA")
+        pixel = img.getpixel((px, py))
+        label = land_use_label(*pixel)
+        return {"label": label, "rgb": pixel[:3]}
+    except Exception as e:
+        logger.warning(f"土地利用失敗: {type(e).__name__}: {e}")
+        return None
+
+
+async def fetch_recent_quakes() -> list:
+    """気象庁 最近の地震リスト（M3以上、最新20件）"""
     try:
         async with new_client() as c:
-            r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetFloodStartTime?lon={lon}&lat={lat}")
-        ct = r.headers.get("content-type", "")
-        if "html" in ct:
-            return None
-        data = r.json()
-        if not data:
-            return None
-        entry = data[0] if isinstance(data, list) else data
-        return {"start_time_min": entry.get("StartTime")}
+            r = await c.get("https://www.jma.go.jp/bosai/quake/data/list.json")
+        quakes = r.json()
+        result = []
+        for q in quakes[:100]:
+            try:
+                mag = float(q.get("mag", 0))
+                if mag >= 3.0:
+                    result.append({
+                        "time":    q.get("at", "")[:19].replace("T", " "),
+                        "mag":     mag,
+                        "area":    q.get("anm", q.get("en_anm", "")),
+                        "depth":   q.get("dep", ""),
+                        "max_int": q.get("mxint", ""),
+                    })
+                    if len(result) >= 10:
+                        break
+            except:
+                continue
+        return result
     except Exception as e:
-        logger.warning(f"浸水開始時間例外: {type(e).__name__}: {e}")
-        return None
+        logger.warning(f"気象庁地震失敗: {type(e).__name__}: {e}")
+        return []
 
 
-# ─── スコア算定 ────────────────────────────────
+# ─── リスクスコア ────────────────────────────
 
 def depth_to_label(depth) -> str:
     if depth is None: return "区域外"
@@ -191,11 +263,11 @@ def score_landslide(landslide, elev) -> dict:
     return {"score": score, "level": "中" if score >= 50 else "低"}
 
 
-# ─── エンドポイント ────────────────────────────
+# ─── エンドポイント ───────────────────────────
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "4.1.0"}
+    return {"status": "ok", "version": "5.0.0"}
 
 
 @app.get("/api/geocode")
@@ -211,33 +283,41 @@ async def analyze(lat: float = Query(...), lon: float = Query(...)):
     if not (20.0 <= lat <= 47.0 and 122.0 <= lon <= 154.0):
         raise HTTPException(status_code=400, detail="日本国内の座標を指定してください")
 
-    elev, pshm, sstrct, landslide, flood, flood_start = await asyncio.gather(
+    (elev, elev_src), pshm, sstrct, landslide, flood, land_use, recent_quakes = await asyncio.gather(
         fetch_elevation(lat, lon),
         fetch_jshis_pshm(lat, lon),
         fetch_jshis_sstrct(lat, lon),
         fetch_jshis_landslide(lat, lon),
         fetch_flood_depth(lat, lon),
-        fetch_flood_start_time(lat, lon),
+        fetch_land_use(lat, lon),
+        fetch_recent_quakes(),
     )
 
     return {
         "coordinate": {"lat": lat, "lon": lon},
         "elevation":  elev,
+        "elevation_src": elev_src,
         "jshis": {"pshm": pshm, "sstrct": sstrct, "landslide": landslide},
         "flood": {
-            "depth":          flood.get("depth")          if flood else None,
-            "label":          depth_to_label(flood.get("depth")) if flood and flood.get("in_zone") else "区域外",
-            "river":          flood.get("river")          if flood else None,
-            "in_zone":        flood.get("in_zone", False) if flood else False,
-            "start_time_min": flood_start.get("start_time_min") if flood_start else None,
+            "depth":   flood.get("depth")   if flood else None,
+            "label":   depth_to_label(flood.get("depth")) if flood and flood.get("in_zone") else "区域外",
+            "river":   flood.get("river")   if flood else None,
+            "in_zone": flood.get("in_zone", False) if flood else False,
         },
+        "land_use":     land_use,
+        "recent_quakes": recent_quakes,
         "scores": {
             "earthquake": score_earthquake(pshm, sstrct),
             "flood":      score_flood(flood, elev),
             "landslide":  score_landslide(landslide, elev),
         },
-        "disclaimer": "本データはJ-SHIS（防災科学技術研究所）・浸水ナビ（国土地理院）の公開データを元に算定した参考情報です。現地調査は実施していないため、実際の状況と乖離が生じる場合があります。",
-        "sources": ["J-SHIS（防災科学技術研究所）https://www.j-shis.bosai.go.jp/", "浸水ナビ（国土地理院）https://suiboumap.gsi.go.jp/"],
+        "disclaimer": "本データはJ-SHIS（防災科学技術研究所）・浸水ナビ・国土地理院・気象庁の公開データを元に算定した参考情報です。現地調査は実施していないため、実際の状況と乖離が生じる場合があります。",
+        "sources": [
+            "J-SHIS（防災科学技術研究所）https://www.j-shis.bosai.go.jp/",
+            "浸水ナビ（国土地理院）https://suiboumap.gsi.go.jp/",
+            "国土数値情報（国土交通省）https://nlftp.mlit.go.jp/",
+            "気象庁 https://www.jma.go.jp/",
+        ]
     }
 
 
@@ -260,55 +340,20 @@ async def full_analysis(address: str = Query(None), lat: float = Query(None), lo
 
 @app.get("/api/debug")
 async def debug(lat: float = 35.731, lon: float = 139.795):
-    """各APIの疎通確認（エラー詳細付き）"""
     results = {}
-
     async def safe(name, coro):
         try:
             v = await coro
-            results[name] = {"ok": v is not None, "value": v}
+            results[name] = {"ok": v is not None and v != (None, None), "value": v}
         except Exception as e:
             results[name] = {"ok": False, "error": f"{type(e).__name__}: {e}"}
-
-    # 浸水ナビは生レスポンスも返す（デバッグ用）
-    async def flood_raw():
-        try:
-            async with new_client() as c:
-                r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetMaxDepthFromLatlon?lon={lon}&lat={lat}")
-            return {
-                "status_code": r.status_code,
-                "content_type": r.headers.get("content-type"),
-                "body_preview": r.text[:200],
-            }
-        except Exception as e:
-            return {"error": f"{type(e).__name__}: {e}", "traceback": traceback.format_exc()[-300:]}
-
     await asyncio.gather(
         safe("elevation",        fetch_elevation(lat, lon)),
         safe("jshis_pshm",       fetch_jshis_pshm(lat, lon)),
         safe("jshis_sstrct",     fetch_jshis_sstrct(lat, lon)),
         safe("jshis_landslide",  fetch_jshis_landslide(lat, lon)),
         safe("flood_depth",      fetch_flood_depth(lat, lon)),
-        safe("flood_start",      fetch_flood_start_time(lat, lon)),
+        safe("land_use",         fetch_land_use(lat, lon)),
+        safe("recent_quakes",    fetch_recent_quakes()),
     )
-
-    # 浸水ナビの生レスポンスを追加
-    results["flood_raw"] = await flood_raw()
-
-    # flood_startの生レスポンスも追加
-    async def flood_start_raw():
-        try:
-            async with new_client() as c:
-                r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetFloodStartTime?lon={lon}&lat={lat}")
-            return {
-                "status_code": r.status_code,
-                "content_type": r.headers.get("content-type"),
-                "body_preview": r.text[:300],
-                "json_type": str(type(r.json()).__name__) if r.headers.get("content-type","").find("html") == -1 else "html",
-            }
-        except Exception as e:
-            return {"error": f"{type(e).__name__}: {e}"}
-
-    results["flood_start_raw"] = await flood_start_raw()
-
     return results
