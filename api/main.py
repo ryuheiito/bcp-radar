@@ -8,7 +8,7 @@ import httpx, asyncio, logging, traceback
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="BCP RADAR API", version="4.3.0")
+app = FastAPI(title="BCP RADAR API", version="4.4.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET"], allow_headers=["*"])
 
 import ssl
@@ -294,5 +294,21 @@ async def debug(lat: float = 35.731, lon: float = 139.795):
 
     # 浸水ナビの生レスポンスを追加
     results["flood_raw"] = await flood_raw()
+
+    # flood_startの生レスポンスも追加
+    async def flood_start_raw():
+        try:
+            async with new_client() as c:
+                r = await c.get(f"http://suiboumap.gsi.go.jp/shinsuimap/Api/Public/GetFloodStartTime?lon={lon}&lat={lat}")
+            return {
+                "status_code": r.status_code,
+                "content_type": r.headers.get("content-type"),
+                "body_preview": r.text[:300],
+                "json_type": str(type(r.json()).__name__) if r.headers.get("content-type","").find("html") == -1 else "html",
+            }
+        except Exception as e:
+            return {"error": f"{type(e).__name__}: {e}"}
+
+    results["flood_start_raw"] = await flood_start_raw()
 
     return results
